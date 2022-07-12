@@ -1,42 +1,48 @@
+*&---------------------------------------------------------------------*
+*& Report ZTESTE_KAYKY
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
 REPORT zteste_kayky.
 
-TABLES: ztbsd_ptl_mat.
+DATA:
+  lr_data TYPE REF TO   data,
+  lt_col  TYPE          lvc_t_fcat,
+  lt_file TYPE TABLE OF string,
+  lftab   TYPE filetable,
+  lrcount TYPE i.
 
-SELECTION-SCREEN BEGIN OF BLOCK b1 WITH FRAME.
+FIELD-SYMBOLS:
+  <fs_tab> TYPE STANDARD TABLE,
+  <fs_ws>.
 
-PARAMETERS: url_foto TYPE string.
+SELECTION-SCREEN: BEGIN OF BLOCK b1 WITH FRAME TITLE TEXT-001.
+PARAMETERS p_table TYPE dd02l-tabname.
+PARAMETERS url     TYPE string.
+SELECTION-SCREEN: END OF BLOCK b1.
 
-SELECTION-SCREEN END OF BLOCK b1.
+START-OF-SELECTION.
 
-AT SELECTION-SCREEN ON VALUE-REQUEST FOR url_foto.
+  CREATE DATA lr_data TYPE TABLE OF (p_table).
+  ASSIGN lr_data->* TO <fs_tab>.
 
-  DATA: it_arquivo    TYPE TABLE OF string,
-        it_portal_mat TYPE  TABLE OF ztbsd_ptl_mat,
-        wa_portal_mat TYPE  ztbsd_ptl_mat,
-        lftab         TYPE filetable,
-        lrcount       TYPE i.
+  CREATE DATA lr_data LIKE LINE OF <fs_tab>.
+  ASSIGN lr_data->* TO <fs_ws>.
 
-  CALL METHOD cl_gui_frontend_services=>file_open_dialog
+  CALL FUNCTION 'LVC_FIELDCATALOG_MERGE'
+    EXPORTING
+      i_structure_name = p_table
     CHANGING
-      file_table              = lftab
-      rc                      = lrcount
-    EXCEPTIONS
-      file_open_dialog_failed = 1
-      cntl_error              = 2
-      error_no_gui            = 3
-      not_supported_by_gui    = 4
-      OTHERS                  = 5.
+      ct_fieldcat      = lt_col.
 
-  IF lrcount > 0.
-    READ TABLE lftab INDEX 1 INTO url_foto.
+  IF lrcount <> 0.
 
     CALL METHOD cl_gui_frontend_services=>gui_upload
       EXPORTING
-        filename                = url_foto
-*       filetype                = 'ASC'
-        has_field_separator     = abap_true
+        filename                = url
+*       has_field_separator     = abap_true
       CHANGING
-        data_tab                = it_arquivo
+        data_tab                = lt_file
       EXCEPTIONS
         file_open_error         = 1
         file_read_error         = 2
@@ -57,20 +63,45 @@ AT SELECTION-SCREEN ON VALUE-REQUEST FOR url_foto.
         not_supported_by_gui    = 17
         error_no_gui            = 18
         OTHERS                  = 19.
-    ENDIF.
 
     IF sy-subrc = 0.
-      LOOP AT it_arquivo  INTO DATA(wa_arquivo).
-        SPLIT wa_arquivo AT ';' INTO wa_portal_mat-matnr wa_portal_mat-url_foto.
+      LOOP AT lt_file INTO DATA(ws_file).
+        SPLIT ws_file AT ';' INTO TABLE DATA(lt_split).
 
-        APPEND wa_portal_mat TO it_portal_mat.
+        LOOP AT lt_col INTO DATA(ws_col).
+          READ TABLE lt_split INTO DATA(ws_split)
+                              INDEX sy-tabix.
+          ASSIGN COMPONENT ws_col-fieldname OF STRUCTURE <fs_ws> TO FIELD-SYMBOL(<fs_field>).
+          <fs_field> = ws_split.
+        ENDLOOP.
 
-        CLEAR wa_portal_mat.
+        APPEND <fs_ws> TO <fs_tab>.
+
       ENDLOOP.
-      MODIFY ztbsd_ptl_mat FROM TABLE it_portal_mat.
-    IF lrcount > 0.
-      MESSAGE 'Dados inseridos com sucesso !' TYPE 'I' DISPLAY LIKE 'S'.
-    ELSE.
-      MESSAGE 'Os Dados não foram inseridos !' TYPE 'I' DISPLAY LIKE 'E'.
+      IF sy-subrc = 0.
+        MODIFY (p_table) FROM TABLE <fs_tab>.
+        MESSAGE 'Dados inseridos com sucesso !' TYPE 'I' DISPLAY LIKE 'S'.
+      ELSE.
+        MESSAGE 'Os Dados não foram inseridos !' TYPE 'I' DISPLAY LIKE 'E'.
+      ENDIF.
     ENDIF.
-    ENDIF.
+  ENDIF.
+
+
+
+AT SELECTION-SCREEN ON VALUE-REQUEST FOR url.
+
+  CALL METHOD cl_gui_frontend_services=>file_open_dialog
+    CHANGING
+      file_table              = lftab
+      rc                      = lrcount
+    EXCEPTIONS
+      file_open_dialog_failed = 1
+      cntl_error              = 2
+      error_no_gui            = 3
+      not_supported_by_gui    = 4
+      OTHERS                  = 5.
+
+  IF lrcount <> 0.
+    READ TABLE lftab INDEX 1 INTO url.
+  ENDIF.
