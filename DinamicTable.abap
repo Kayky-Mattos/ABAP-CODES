@@ -6,7 +6,7 @@
 REPORT zteste_kayky.
 
 DATA:
-  lr_data TYPE REF TO   data,
+  lr_data TYPE REF TO   DATA,
   lt_col  TYPE          lvc_t_fcat,
   lt_file TYPE TABLE OF string.
 
