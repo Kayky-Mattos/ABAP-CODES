@@ -12,7 +12,7 @@ SELECTION-SCREEN: END OF BLOCK b1.
 
 
 DATA lv_data TYPE string VALUE 'Kaio,Kayky,Kaue'.
-                                " 1     2     3 "
+                                " 1    2    3 "
 TRY.
     DATA(lv_result) = segment( val = lv_data index = indx sep = ',' ).
   CATCH  cx_sy_strg_par_val.
